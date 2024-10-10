@@ -43,10 +43,10 @@ namespace PlateComparison
             return plate;
         }
 
-        private static double PlakaBenzerlikOrani(string plaka1, string plaka2)
+        public static double PlakaBenzerlikOrani(string plaka1, string plaka2)
         {
-            // Plakayý parçalarýna ayýr ve normalize et.
-            var plakaPattern = @"^(\d{2})\s*([A-Z]{1,3})\s*(\d{1,4})$";
+            // Plakalarý þehir kodu, harf ve sayý olarak üçe ayýr.
+            var plakaPattern = @"^(\d{2})\s*([A-Z]{1,3})\s*(\d+)$";
 
             var match1 = Regex.Match(plaka1.Replace(" ", "").ToUpper(), plakaPattern);
             var match2 = Regex.Match(plaka2.Replace(" ", "").ToUpper(), plakaPattern);
@@ -65,46 +65,37 @@ namespace PlateComparison
             string harfler2 = match2.Groups[2].Value;
             string sayilar2 = match2.Groups[3].Value;
 
-            // Þehir kodunu karþýlaþtýr.
+            // Þehir kodunu birebir karþýlaþtýr.
             double sehirKoduBenzerlik = sehirKodu1 == sehirKodu2 ? 1.0 : 0.0;
 
-            // Harf kýsmýný karþýlaþtýr (Levenshtein Mesafesi kullanýlabilir).
-            double harfBenzerlik = 1.0 - (double)LevenshteinMesafesi(harfler1, harfler2) / Math.Max(harfler1.Length, harfler2.Length);
+            // Harf kýsmýný karþýlaþtýr, daha kýsa olaný baz alarak deðerlendirme yap.
+            double harfBenzerlik = KarakterBenzerligi(harfler1, harfler2);
 
-            // Sayý kýsmýný karþýlaþtýr.
-            double sayiBenzerlik = sayilar1 == sayilar2 ? 1.0 : 0.0;
+            // Sayý kýsmýný karþýlaþtýr, örneðin '477' ile '0477' ayný kabul edilir.
+            double sayiBenzerlik = sayilar1.TrimStart('0') == sayilar2.TrimStart('0') ? 1.0 : 0.0;
 
             // Ortalama benzerlik oranýný hesapla.
             return (sehirKoduBenzerlik + harfBenzerlik + sayiBenzerlik) / 3.0;
         }
 
-        private static int LevenshteinMesafesi(string s1, string s2)
+        public static double KarakterBenzerligi(string s1, string s2)
         {
-            int n = s1.Length;
-            int m = s2.Length;
-            int[,] dp = new int[n + 1, m + 1];
+            // Ýki harf grubunun benzerlik oranýný uzunluða göre deðerlendir.
+            int minLength = Math.Min(s1.Length, s2.Length);
+            int maxLength = Math.Max(s1.Length, s2.Length);
 
-            for (int i = 0; i <= n; i++)
+            // Ortak karakter sayýsýný hesapla.
+            int ortakKarakterSayisi = 0;
+            for (int i = 0; i < minLength; i++)
             {
-                for (int j = 0; j <= m; j++)
+                if (s1[i] == s2[i])
                 {
-                    if (i == 0)
-                    {
-                        dp[i, j] = j;
-                    }
-                    else if (j == 0)
-                    {
-                        dp[i, j] = i;
-                    }
-                    else
-                    {
-                        int cost = (s1[i - 1] == s2[j - 1]) ? 0 : 1;
-                        dp[i, j] = Math.Min(Math.Min(dp[i - 1, j] + 1, dp[i, j - 1] + 1), dp[i - 1, j - 1] + cost);
-                    }
+                    ortakKarakterSayisi++;
                 }
             }
 
-            return dp[n, m];
+            // Harf benzerliði, ortak karakterlerin ortalamasý alýnarak hesaplanýr.
+            return (double)(ortakKarakterSayisi + 1) / (maxLength + 1);
         }
     }
 }
