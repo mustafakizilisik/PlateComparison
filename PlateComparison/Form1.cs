@@ -14,6 +14,35 @@ namespace PlateComparison
             lblResult.Text = "Doðruluk Oraný: " + PlakaBenzerlikOrani(txtFirstPlate.Text, txtLastPlate.Text);
         }
 
+        private static string EnBenzerPlakayiBul(string plate, List<string> plateList, double truthShare)
+        {
+            double maxBenzerlikOrani = -1.0;
+            string enBenzerPlaka = string.Empty;
+            var lockObject = new object();
+
+            Parallel.ForEach(plateList, plaka =>
+            {
+                double benzerlikOrani = PlakaBenzerlikOrani(plate, plaka);
+
+                lock (lockObject)
+                {
+                    if (benzerlikOrani > maxBenzerlikOrani)
+                    {
+                        maxBenzerlikOrani = benzerlikOrani;
+                        enBenzerPlaka = plaka;
+                    }
+                }
+            });
+
+            if (maxBenzerlikOrani >= truthShare)
+            {
+                Console.WriteLine($"Tanýmsýz Plaka: {plate} \"{enBenzerPlaka}\" Olarak Güncellendi. Doðruluk Oraný: {maxBenzerlikOrani}");
+                return enBenzerPlaka;
+            }
+
+            return plate;
+        }
+
         private static double PlakaBenzerlikOrani(string plaka1, string plaka2)
         {
             // Plakayý parçalarýna ayýr ve normalize et.
